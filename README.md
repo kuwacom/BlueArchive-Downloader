@@ -42,5 +42,6 @@ so all you have to do is execute the download_assets.py script after every updat
   - ShopRefreshExcel ('EventContentId' not found)
 # Reference & Thank
 https://github.com/lwd-temp/blue-archive-spine-production
+Offer my thoughts.
 Report from Pscgylotti.
 https://github.com/K0lb3/Blue-Archive---Asset-Downloader/issues/5
