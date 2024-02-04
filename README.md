@@ -26,20 +26,6 @@ so all you have to do is execute the download_assets.py script after every updat
 - ``flatbuf_schema_generator.py``
 - Cannot use.
   
-
-## TODO
-
-- fix the decoding of some tables (flatbuf_schema_generator, FlatData/dump.py)
-  - AnimationBlendTable (decoder missing)
-  - AnimatorDataTable   (str decoding)
-  - FurnitureExcelTable ('Location' not found)
-  - GachaElementExcelTable ('EventContentId' not found)
-  - ItemExcelTable ('EventContentId' not found)
-  - MissionExcelTable ('EventContentId' not found)
-  - OperatorExceTable ('Key' not found)
-  - ShopExcel ('EventContentId' not found)
-  - ShopInfoExcel ('EventContentId' not found)
-  - ShopRefreshExcel ('EventContentId' not found)
 # Reference & Thank
 https://github.com/lwd-temp/blue-archive-spine-production
 Offer my thoughts.
