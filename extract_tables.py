@@ -11,7 +11,7 @@ lower_name_to_module_dict = {
 }
 from FlatData.dump import dump_table
 
-TABLE_FP = os.path.join(EXT, "Preload", "TableBundles")
+TABLE_FP = os.path.join(EXT , "TableBundles")
 
 
 def main():
