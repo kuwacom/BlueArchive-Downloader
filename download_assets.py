@@ -1,138 +1,114 @@
-import requests
 import os
-from AssetBatchConverter import extract_assets
+import requests
+from zipfile import ZipFile
+import io
+import re
+import binascii
 import UnityPy
-
 ROOT = os.path.dirname(os.path.realpath(__file__))
 RAW = os.path.join(ROOT, "raw")
 EXT = os.path.join(ROOT, "extracted")
 VERSION = os.path.join(ROOT, "version.txt")
+#資源路徑
+resource_path = "https://yostar-serverinfo.bluearchiveyostar.com/r64_4hwwigy8ojry9k25hduz.json"
+resource_path2 = "https://prod-noticeindex.bluearchiveyostar.com/prod/index.json"
 
-import UnityPy
-
+option = {
+    "skipExistingDownloadedResource": True,
+    "skipExistingAssets": True
+}
 
 def main():
     path = ROOT
-    app_id = "com.nexon.bluearchive"
-
+    app_id = "com.YostarJP.BlueArchive"
+    # 獲取版本
     print("Fetching version")
     if os.path.exists(VERSION):
         with open(VERSION, "rt") as f:
             version = f.read()
     else:
-        print("no local version found")
+        print("No local version found")
         version = update_apk_version(app_id, path)
     print(version)
 
-    print("Fetch latest resource version")
-    try:
-        check = version_check(app_id, build_version=version)
-    except Exception as e:
-        print("error during resource version request")
-        print("updating apk settings")
-        version = update_apk_version(app_id, path)
-        check = version_check(app_id, build_version = version)
+    game_files_list = getAllGameFiles()
+    for index, file_info in enumerate(game_files_list, start=1):
+        file_url, path, crc = file_info
+        print("="*30)
+        filename = file_url.split("/")[-1]
+        # 根據文件類型確定目標路徑
+        if filename.endswith('.bundle'):
+            dest_path = os.path.join(RAW, filename)
+        elif 'TableBundles' in file_url:
+            dest_path = os.path.join(EXT, 'TableBundles', filename)
+        elif 'MediaResources' in file_url:
+            dest_path = os.path.join(EXT, 'MediaResources', path)
+        else:
+            dest_path = os.path.join(EXT, filename)    
+        print(filename)
+        while True:
+            if option["skipExistingDownloadedResource"] and os.path.isfile(dest_path):
+                print("Already downloaded. Skipping.")
+                break
+            downloadFile(file_url, dest_path)
+            calculated_crc = calculate_crc32(dest_path)
+            if calculated_crc == crc:
+                break
+            else:
+                print(f"WARNING: CRC32 checksum for %7Bdest_path%7D does not match expected value! Retrying...")
+# 計算文件的CRC32校驗和的函數
+def calculate_crc32(file_path):
+    buf = open(file_path, 'rb').read()
+    crc32 = binascii.crc32(buf) & 0xFFFFFFFF
+    return crc32
+def getBaseResourceURL():
+    data = requests.get(resource_path).json()
+    print(data)
+    return data["ConnectionGroups"][0]['OverrideConnectionGroups'][-1]['AddressablesCatalogUrlRoot']
+# 獲取所有遊戲文件的函數
+def getAllGameFiles():
+    data = []
+    base_url = getBaseResourceURL()
+    # BundleFiles
+    bundle_url = base_url + '/Android/bundleDownloadInfo.json'
+    resB = requests.get(bundle_url).json()
+    for asset in resB["BundleFiles"]:
+        data.append((base_url + '/Android/' + asset["Name"], "", asset.get("Crc", 0)))
+   # TableBundles
+    TableBundles_url = base_url + '/TableBundles/TableCatalog.json'
+    resT = requests.get(TableBundles_url).json()
+    for key, asset in resT["Table"].items():  #
+        data.append((base_url + '/TableBundles/' + asset["Name"], "", asset.get("Crc", 0)))  
+    # MediaResources
+    MediaResources_url = base_url + '/MediaResources/MediaCatalog.json'
+    resM = requests.get(MediaResources_url).json()
+    for key, value in resM["Table"].items():
+        media_url = base_url + '/MediaResources/' + value["path"]
+        data.append((media_url, value["path"], value.get("Crc", 0)))
+    return data
+# 下載文件
+def downloadFile(url, filename):
+    os.makedirs(os.path.dirname(filename), exist_ok=True)
+    src = requests.get(url).content
+    with open(filename, 'wb') as f:
+        f.write(src)
 
-    print("Updating resources/assets")
-    update_resources(check["patch"]["resource_path"])
-
-
-def version_check(app_id: str, api_version: str="v1.1", build_version: str = "1.35.115378"):
-    req = requests.post(
-        f"https://api-pub.nexon.com/patch/{api_version}/version-check",
-        json={
-            "market_game_id": app_id,
-            "language": "en",
-            "advertising_id": "00000000-0000-0000-0000-000000000000",
-            "market_code": "playstore",
-            "country": "US",
-            "sdk_version": "187",  # doesn't seem to matter
-            "curr_build_version": build_version,
-            "curr_build_number": int(build_version.rsplit(".", 1)[1]),
-            "curr_patch_version": 0,
-        },
-        headers={
-            "Content-Type": "application/json; charset=utf-8",
-            "User-Agent": "Dalvik/2.1.0 (Linux; U; Android 5.1.1; SM-A908N Build/LMY49I)",
-            "Host": "api-pub.nexon.com",
-            "Connection": "Keep-Alive",
-            "Accept-Encoding": "gzip",
-        },
-    )
-    res = req.json()
-
-    # latest_build_version = res["latest_build_version"]
-    # latest_build_number = res["latest_build_number"]
-    # if latest_build_version != build_version or latest_build_number != build_number:
-    #    return version_check(api_version, latest_build_version, latest_build_number)
-    return res
-
-
-def update_resources(resource_path, lang="en"):
-    # 1. get resource data
-    req = requests.get(resource_path)
-    res = req.json()
-
-    # 2. update resources
-    resource_main_url = resource_path.rsplit("/", 1)[0]
-    for resource in res["resources"]:
-        # {
-        # "group": "group2",
-        # "resource_path": "JA/group2/e392fcd3de13100b67589ef873b1f6d4.bundle",
-        # "resource_size": 25206,
-        # "resource_hash": "42092be2cf4d14381107205e40ab08b1"
-        # },
-        update_resource(resource_main_url, resource)
-
-
-def update_resource(resource_main_url, resource):
-    url = f"{resource_main_url}/{resource['resource_path']}"
-    if url.endswith(".bundle"):
-        raw_path = os.path.join(RAW, *resource["resource_path"].split("/"))
-    else:
-        raw_path = os.path.join(EXT, *resource["resource_path"].split("/"))
-    os.makedirs(os.path.dirname(raw_path), exist_ok=True)
-
-    if not (
-        os.path.exists(raw_path)
-        and os.path.getsize(raw_path) == resource["resource_size"]
-    ):
-        print(raw_path)
-        data = requests.get(url).content
-        with open(raw_path, "wb") as f:
-            f.write(data)
-        
-        # Unity BundleFile
-        if url.endswith(".bundle"):
-            try:
-                extract_assets(data)
-            except Exception as e:
-                print(e)
-                print("failed to extract bundle")
-                print(url)
-                print(resource["resource_path"])
-                raise e
-            # extract with UnityPy
-
-
-def update_apk_version(apk_id, path):
-    print("downloading latest apk from QooApp")
-    apk_data = download_QooApp_apk(apk_id)
+    # 計算CRC32校驗和
+    crc32 = calculate_crc32(filename)
+    print(f"CRC32 checksum for {filename}: {crc32}")
+# 更新APK版本的函數
+def update_apk_version(app_id, path):
+    print("Downloading the latest APK from QooApp")
+    apk_data = download_QooApp_apk(app_id)
     with open(os.path.join(path, "current.apk"), "wb") as f:
         f.write(apk_data)
-    print("extracing app_version and api_version")
+    print("Extracting app version and API version")
     version = extract_apk_version(apk_data)
     with open(VERSION, "wt") as f:
         f.write(version)
-
     return version
-
-
+# 提取APK版本的函數
 def extract_apk_version(apk_data):
-    from zipfile import ZipFile
-    import io
-    import re
-
     with io.BytesIO(apk_data) as stream:
         with ZipFile(stream) as zip:
             # devs are dumb shit and keep moving the app version around
@@ -144,13 +120,10 @@ def extract_apk_version(apk_data):
                             b"\d+?\.\d+?\.\d+", obj.get_raw_data()
                         )[0].decode()
                         return build_version
-            # smali\com\nexon\pub\bar\q.smali has the v1.1 for Nexus
-
-
-def download_QooApp_apk(apk):
+# 從QooApp下載APK的函數
+def download_QooApp_apk(apk_id):
     from urllib.request import urlopen, Request
     from urllib.parse import urlencode
-
     query = urlencode(
         {
             "supported_abis": "x86,armeabi-v7a,armeabi",
@@ -159,7 +132,7 @@ def download_QooApp_apk(apk):
     )
     res = urlopen(
         Request(
-            url=f"https://api.qoo-app.com/v6/apps/{apk}/download?{query}",
+            url=f"https://d1.qoo-apk.com/12252/apk/com.YostarJP.BlueArchive-259750-74097837-1706062082.apk",
             headers={
                 "accept-encoding": "gzip",
                 "user-agent": "QooApp 8.1.7",
@@ -170,7 +143,6 @@ def download_QooApp_apk(apk):
     )
     data = urlopen(res.url).read()
     return data
-
 
 if __name__ == "__main__":
     main()
