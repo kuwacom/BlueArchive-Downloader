@@ -2,7 +2,7 @@
 
 **免責聲明：** "Blue Archive"是NAT GAMES Co., Ltd.和Yostar Co., Ltd.的註冊商標。 本儲存庫與NEXON Korea Corp.、NEXON GAMES Co., Ltd.及Yostar Co., Ltd.無關。 所有遊戲資源的版權屬於其各自的所有者。
 
-這是一個小型項目，旨在下載全球版本的藍檔案的所有資源並同時進行提取。 該腳本自主更新資源及其參數，您只需在每次更新後執行`download_assets.py`腳本即可取得最新檔案。
+這是一個小型項目，旨在下載日服版本的藍檔案的所有資源並同時進行提取。 該腳本自主更新資源及其參數，您只需在每次更新後執行`download_assets.py`腳本即可取得最新檔案。
 
 ## 要求
 
