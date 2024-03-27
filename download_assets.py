@@ -10,7 +10,7 @@ RAW = os.path.join(ROOT, "raw")
 EXT = os.path.join(ROOT, "extracted")
 VERSION = os.path.join(ROOT, "version.txt")
 #資源路徑
-resource_path = "https://yostar-serverinfo.bluearchiveyostar.com/r65_kventkox7kspzcnyzw8b.json"
+resource_path = "https://yostar-serverinfo.bluearchiveyostar.com/r66_byln9y195x3fefcjqjf5.json"
 resource_path2 = "https://prod-noticeindex.bluearchiveyostar.com/prod/index.json"
 
 option = {
@@ -132,7 +132,7 @@ def download_QooApp_apk(apk_id):
     )
     res = urlopen(
         Request(
-            url=f"https://d1.qoo-apk.com/12252/apk/com.YostarJP.BlueArchive-263651-75633837-1708481643.apk",
+            url=f"https://d1.qoo-apk.com/12252/apk/com.YostarJP.BlueArchive-270153-74675185-1711505764.apk",
             headers={
                 "accept-encoding": "gzip",
                 "user-agent": "QooApp 8.1.7",
