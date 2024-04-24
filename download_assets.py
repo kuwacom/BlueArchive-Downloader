@@ -10,7 +10,7 @@ RAW = os.path.join(ROOT, "raw")
 EXT = os.path.join(ROOT, "extracted")
 VERSION = os.path.join(ROOT, "version.txt")
 #資源路徑
-resource_path = "https://yostar-serverinfo.bluearchiveyostar.com/r66_byln9y195x3fefcjqjf5.json"
+resource_path = "https://yostar-serverinfo.bluearchiveyostar.com/r67_jjjg51ngucokd90cuk4l.json"
 resource_path2 = "https://prod-noticeindex.bluearchiveyostar.com/prod/index.json"
 
 option = {
@@ -41,8 +41,8 @@ def main():
             dest_path = os.path.join(RAW, filename)
         elif 'TableBundles' in file_url:
             dest_path = os.path.join(EXT, 'TableBundles', filename)
-        elif 'MediaResources' in file_url:
-            dest_path = os.path.join(EXT, 'MediaResources', path)
+        #elif 'MediaResources' in file_url:
+            #dest_path = os.path.join(EXT, 'MediaResources', path)
         else:
             dest_path = os.path.join(EXT, filename)    
         print(filename)
@@ -79,12 +79,12 @@ def getAllGameFiles():
     resT = requests.get(TableBundles_url).json()
     for key, asset in resT["Table"].items():  #
         data.append((base_url + '/TableBundles/' + asset["Name"], "", asset.get("Crc", 0)))  
-    # MediaResources
-    MediaResources_url = base_url + '/MediaResources/MediaCatalog.json'
-    resM = requests.get(MediaResources_url).json()
-    for key, value in resM["Table"].items():
-        media_url = base_url + '/MediaResources/' + value["path"]
-        data.append((media_url, value["path"], value.get("Crc", 0)))
+    # MediaResources Yostar把/MediaResources/MediaCatalog.json關了
+    #MediaResources_url = base_url + '/MediaResources/MediaCatalog.json'
+    #resM = requests.get(MediaResources_url).json()
+    #for key, value in resM["Table"].items():
+        #media_url = base_url + '/MediaResources/' + value["path"]
+        #data.append((media_url, value["path"], value.get("Crc", 0)))  
     return data
 # 下載文件
 def downloadFile(url, filename):
@@ -132,7 +132,7 @@ def download_QooApp_apk(apk_id):
     )
     res = urlopen(
         Request(
-            url=f"https://d1.qoo-apk.com/12252/apk/com.YostarJP.BlueArchive-270153-74675185-1711505764.apk",
+            url=f"https://d1.qoo-apk.com/12252/apk/com.YostarJP.BlueArchive-275921-131992259-1713925384.apk",
             headers={
                 "accept-encoding": "gzip",
                 "user-agent": "QooApp 8.1.7",
