@@ -1,48 +1,55 @@
 import re
 import os
 import subprocess
+from os import makedirs
+from os.path import dirname, realpath, join, basename, splitext
+from typing import Literal
 
-# paths
+root = join(dirname(realpath(__file__)), "..")
 
-ROOT = os.path.dirname(os.path.realpath(__file__))
-DUMP_FP = os.path.join(ROOT, "dump.cs")
-FLATC = os.path.join(ROOT, "lib", "flatc.exe")
-FBS_FP = os.path.join(ROOT, "BlueArchive.fbs")
+FLATC = join("lib", "flatc.exe")
+
+def filepath(*args):
+    return os.path.join(*args)
+
+def dump_cs_to_structs_and_enums(dump_cs_filepath="dump.cs"):
+    with open(dump_cs_filepath, "rt", encoding="utf-8") as f:
+        data = f.read()
+    enums = extract_enums(data)
+    structs = extract_structs(data)
+    return (structs, enums)
+
+
+
+def generate_fbs(structs, enums, filepath="BlueArchive.fbs"):
+    fbs_path = join(filepath)
+    with open(fbs_path, "wt", encoding="utf8") as f:
+        f.write("namespace FlatData;\n\n")
+        write_enums_to_fbs(enums, f)
+        write_structs_to_fbs(structs, enums, f)
+    return fbs_path
 
 
 def main():
-    # fetch whole dump.cs
-    with open(DUMP_FP, "rt", encoding="utf-8") as f:
-        data = f.read()
-
-    # extract enums
-    enums = extract_enums(data)
-    # extract structs
-    structs = extract_structs(data)
-
-    # create fbs scheme
-    with open(FBS_FP, "wt", encoding="utf8") as f:
-        # write namespace header
-        f.write("namespace FlatData;\n\n")
-        # write enums
-        write_enums_to_fbs(enums, f)
-        # write structs
-        write_structs_to_fbs(structs, enums, f)
-
-    # create python wrapper
+    structs, enums = dump_cs_to_structs_and_enums()
+    fbs_path = generate_fbs(structs, enums)
 
     # compile fbs schema to python
-    print(subprocess.run(f'"{FLATC}" --python --scoped-enums "{FBS_FP}"'))
+    res = subprocess.run(
+        [FLATC, "--python", "--no-warnings", "--scoped-enums", fbs_path],
+        capture_output=True,
+    )
+    print(res)
 
     # write init file
-    init_fp = os.path.join(ROOT, "FlatData", "__init__.py")
+    init_fp = filepath("FlatData", "__init__.py")
     with open(init_fp, "wt", encoding="utf8") as f:
-        for fn in os.listdir(os.path.join(ROOT, "FlatData")):
+        for fn in os.listdir(filepath("FlatData", ".")):
             if fn.endswith(".py") and fn not in ["dump.py", "__init__.py"]:
                 f.write("from .{n} import {n}\n".format(n=fn[:-3]))
 
-        # write dump helper
-        init_fp = os.path.join(ROOT, "FlatData", "dump.py")
+    # write dump helper
+    init_fp = filepath("FlatData", "dump.py")
     with open(init_fp, "wt", encoding="utf8") as f:
         create_dumper_wrappers(structs, enums, f)
 
@@ -153,12 +160,15 @@ def write_structs_to_fbs(structs, enums, f):
                     pname += "_"
                 if typ not in structs and typ not in enums and typ not in types:
                     continue
+            if pname == ptype:
+                pname += "_"
             f.write(f"    {pname}: {ptype};\n")
         f.write("}\n\n")
 
 
 def create_dumper_wrappers(structs, enums, f):
     typ_to_convert = {
+        "sbyte": "ConvertSbyte",
         "string": "ConvertString",
         "int": "ConvertInt",
         "long": "ConvertLong",
@@ -171,7 +181,7 @@ def create_dumper_wrappers(structs, enums, f):
     f.write("def dump_table(obj) -> list:\n")
     f.write("    typ_name = obj.__class__.__name__[:-5]\n")
     f.write(
-        "    dump_func = next(f for x,f in globals().items() if x.endswith(typ_name))\n"
+        "    dump_func = next(f for x,f in globals().items() if x.endswith('_' + typ_name))\n"
     )
     f.write("    password = CreateKey(typ_name[:-5])\n")
     f.write(
@@ -197,6 +207,8 @@ def create_dumper_wrappers(structs, enums, f):
                     val_func = f"{convert}(obj.{pname}(%s), password)"
                 elif ptype in enums:
                     convert = typ_to_convert[enums[ptype]["format"]]
+                    if pname == ptype:
+                        pname += "_"
                     val_func = f"{ptype}({convert}(obj.{pname}(%s), password)).name"
                 elif ptype == "bool":
                     val_func = f"obj.{pname}(%s)"
@@ -223,4 +235,3 @@ def create_dumper_wrappers(structs, enums, f):
 
 if __name__ == "__main__":
     main()
-
