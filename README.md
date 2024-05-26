@@ -32,3 +32,6 @@ https://github.com/lwd-temp/blue-archive-spine-production
 Offer my thoughts.  
 Report from Pscgylotti.  
 https://github.com/K0lb3/Blue-Archive---Asset-Downloader/issues/5
+
+# This project is not updated
+please come  [NewDownloader](<https://github.com/fiseleo/BlueArchiveDownloaderJP/tree/main> "Title")
