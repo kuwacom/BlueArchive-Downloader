@@ -8,6 +8,9 @@ import UnityPy
 import json
 import platform
 import subprocess
+
+import concurrent.futures
+
 ROOT = os.path.dirname(os.path.realpath(__file__))
 RAW = os.path.join(ROOT, "raw")
 EXT = os.path.join(ROOT, "extracted")
@@ -20,6 +23,33 @@ option = {
     "skipExistingDownloadedResource": True,
     "skipExistingAssets": True
 }
+
+def asset_download(file_info):
+    file_url, path, crc = file_info
+    filename = file_url.split("/")[-1]
+    
+    if filename.endswith('.bundle'):
+        dest_path = os.path.join(RAW, filename)
+    elif 'TableBundles' in file_url:
+        dest_path = os.path.join(EXT, 'TableBundles', filename)
+    elif 'MediaResources' in file_url:
+        dest_path = os.path.join(EXT, 'MediaResources', path)
+    else:
+        dest_path = os.path.join(EXT, filename)
+    
+    if option["skipExistingDownloadedResource"] and os.path.isfile(dest_path):
+        print(f"{filename} - Already downloaded. Skipping.")
+        return
+    
+    while True:
+        downloadFile(file_url, dest_path)
+        calculated_crc = calculate_crc32(dest_path)
+        if calculated_crc == crc:
+            print(f"{filename} - Download successful.")
+            break
+        else:
+            print(f"WARNING: CRC32 checksum for {dest_path} does not match expected value! Retrying...")
+
 
 def main():
     path = ROOT
@@ -35,30 +65,34 @@ def main():
     print(version)
 
     game_files_list = getAllGameFiles()
-    for index, file_info in enumerate(game_files_list, start=1):
-        file_url, path, crc = file_info
-        print("="*30)
-        filename = file_url.split("/")[-1]
-        # 根據文件類型確定目標路徑
-        if filename.endswith('.bundle'):
-            dest_path = os.path.join(RAW, filename)
-        elif 'TableBundles' in file_url:
-            dest_path = os.path.join(EXT, 'TableBundles', filename)
-        elif 'MediaResources' in file_url:
-            dest_path = os.path.join(EXT, 'MediaResources', path)
-        else:
-            dest_path = os.path.join(EXT, filename)    
-        print(filename)
-        while True:
-            if option["skipExistingDownloadedResource"] and os.path.isfile(dest_path):
-                print("Already downloaded. Skipping.")
-                break
-            downloadFile(file_url, dest_path)
-            calculated_crc = calculate_crc32(dest_path)
-            if calculated_crc == crc:
-                break
-            else:
-                print(f"WARNING: CRC32 checksum for %7Bdest_path%7D does not match expected value! Retrying...")
+    with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
+        executor.map(asset_download, game_files_list)
+    # for index, file_info in enumerate(game_files_list, start=1):
+        
+    #     file_url, path, crc = file_info
+    #     print("="*30)
+    #     filename = file_url.split("/")[-1]
+    #     # 根據文件類型確定目標路徑
+    #     if filename.endswith('.bundle'):
+    #         dest_path = os.path.join(RAW, filename)
+    #     elif 'TableBundles' in file_url:
+    #         dest_path = os.path.join(EXT, 'TableBundles', filename)
+    #     elif 'MediaResources' in file_url:
+    #         dest_path = os.path.join(EXT, 'MediaResources', path)
+    #     else:
+    #         dest_path = os.path.join(EXT, filename)    
+    #     print(filename)
+    #     while True:
+    #         if option["skipExistingDownloadedResource"] and os.path.isfile(dest_path):
+    #             print("Already downloaded. Skipping.")
+    #             break
+    #         downloadFile(file_url, dest_path)
+    #         calculated_crc = calculate_crc32(dest_path)
+    #         if calculated_crc == crc:
+    #             break
+    #         else:
+    #             print(f"WARNING: CRC32 checksum for %7Bdest_path%7D does not match expected value! Retrying...")
+
 # 計算文件的CRC32校驗和的函數
 def calculate_crc32(file_path):
     buf = open(file_path, 'rb').read()
@@ -90,6 +124,9 @@ def getAllGameFiles():
     response.raise_for_status()
     with open(input_file_path, 'wb') as file:
         file.write(response.content)
+    # 出力ディレクトリが存在しない場合作成
+    if not os.path.exists(os.path.join(EXT, 'MediaResources')):
+        os.makedirs(os.path.join(EXT, 'MediaResources'))
     output_file_path = os.path.join(EXT, 'MediaResources', 'MediaCatalog.json')
     if platform.system() == 'Windows':
         exe_path = os.path.abspath("MemoryPackDeserializer/MemoryPackDeserializer.exe")
