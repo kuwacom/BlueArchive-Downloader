@@ -9,7 +9,9 @@ import json
 import platform
 import subprocess
 
-import concurrent.futures
+import threading
+
+MAX_THREADS = 50
 
 ROOT = os.path.dirname(os.path.realpath(__file__))
 RAW = os.path.join(ROOT, "raw")
@@ -42,6 +44,7 @@ def asset_download(file_info):
         return
     
     while True:
+        print("Dwonload to: " + file_url)
         downloadFile(file_url, dest_path)
         calculated_crc = calculate_crc32(dest_path)
         if calculated_crc == crc:
@@ -69,29 +72,23 @@ def main():
         executor.map(asset_download, game_files_list)
     # for index, file_info in enumerate(game_files_list, start=1):
         
-    #     file_url, path, crc = file_info
-    #     print("="*30)
-    #     filename = file_url.split("/")[-1]
-    #     # 根據文件類型確定目標路徑
-    #     if filename.endswith('.bundle'):
-    #         dest_path = os.path.join(RAW, filename)
-    #     elif 'TableBundles' in file_url:
-    #         dest_path = os.path.join(EXT, 'TableBundles', filename)
-    #     elif 'MediaResources' in file_url:
-    #         dest_path = os.path.join(EXT, 'MediaResources', path)
-    #     else:
-    #         dest_path = os.path.join(EXT, filename)    
-    #     print(filename)
-    #     while True:
-    #         if option["skipExistingDownloadedResource"] and os.path.isfile(dest_path):
-    #             print("Already downloaded. Skipping.")
-    #             break
-    #         downloadFile(file_url, dest_path)
-    #         calculated_crc = calculate_crc32(dest_path)
-    #         if calculated_crc == crc:
-    #             break
-    #         else:
-    #             print(f"WARNING: CRC32 checksum for %7Bdest_path%7D does not match expected value! Retrying...")
+    active_threads = []
+    for file_info in game_files_list:
+        # 新しいスレッドを起動し、リストに追加
+        while len(active_threads) >= MAX_THREADS:
+            # すべてのアクティブスレッドの終了を待つ
+            for download_thread in active_threads:
+                download_thread.join(timeout=1)
+            active_threads = [download_thread for download_thread in active_threads if download_thread.is_alive()]
+
+        download_thread = threading.Thread(target=asset_download, args=(file_info,))
+        download_thread.daemon = True
+        download_thread.start()
+        active_threads.append(download_thread)
+    
+    # 最後のスレッドが終了するのを待つ
+    for download_thread in active_threads:
+        download_thread.join()
 
 # 計算文件的CRC32校驗和的函數
 def calculate_crc32(file_path):
