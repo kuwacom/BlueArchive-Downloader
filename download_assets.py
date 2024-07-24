@@ -18,7 +18,7 @@ RAW = os.path.join(ROOT, "raw")
 EXT = os.path.join(ROOT, "extracted")
 VERSION = os.path.join(ROOT, "version.txt")
 #資源路徑
-resource_path = "https://yostar-serverinfo.bluearchiveyostar.com/r67_jjjg51ngucokd90cuk4l.json"
+resource_path = "https://yostar-serverinfo.bluearchiveyostar.com/r70_47_v8g5eikyrqgs6zuiohj9.json"
 resource_path2 = "https://prod-noticeindex.bluearchiveyostar.com/prod/index.json"
 
 option = {
@@ -52,6 +52,7 @@ def asset_download(file_info):
             break
         else:
             print(f"WARNING: CRC32 checksum for {dest_path} does not match expected value! Retrying...")
+            break
 
 
 def main():
@@ -68,10 +69,7 @@ def main():
     print(version)
 
     game_files_list = getAllGameFiles()
-    with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
-        executor.map(asset_download, game_files_list)
-    # for index, file_info in enumerate(game_files_list, start=1):
-        
+
     active_threads = []
     for file_info in game_files_list:
         # 新しいスレッドを起動し、リストに追加
@@ -103,16 +101,24 @@ def getBaseResourceURL():
 def getAllGameFiles():
     data = []
     base_url = getBaseResourceURL()
+
     # BundleFiles
     bundle_url = base_url + '/Android/bundleDownloadInfo.json'
     resB = requests.get(bundle_url).json()
     for asset in resB["BundleFiles"]:
         data.append((base_url + '/Android/' + asset["Name"], "", asset.get("Crc", 0)))
-   # TableBundles
-    TableBundles_url = base_url + '/TableBundles/TableCatalog.json'
+    
+    # TableBundles
+    # 最新版のみなぜか TableCatalog.json がないため、一時的に過去バージョンから持ってくる
+    # TableCatalog.bytes というファイルがあるのでそれを解析して利用するのもあり
+    TableBundles_url = "https://prod-clientpatch.bluearchiveyostar.com/r67_jjjg51ngucokd90cuk4l_3" + '/TableBundles/TableCatalog.json'
+    # TableBundles_url = base_url + '/TableBundles/TableCatalog.json'
+    print(TableBundles_url)
     resT = requests.get(TableBundles_url).json()
     for key, asset in resT["Table"].items():  #
         data.append((base_url + '/TableBundles/' + asset["Name"], "", asset.get("Crc", 0)))  
+
+    # MediaResource
     MediaResources_url = base_url + '/MediaResources/MediaCatalog.bytes'
     if not os.path.exists(RAW):
         os.makedirs(RAW)
@@ -121,9 +127,11 @@ def getAllGameFiles():
     response.raise_for_status()
     with open(input_file_path, 'wb') as file:
         file.write(response.content)
+        
     # 出力ディレクトリが存在しない場合作成
     if not os.path.exists(os.path.join(EXT, 'MediaResources')):
         os.makedirs(os.path.join(EXT, 'MediaResources'))
+
     output_file_path = os.path.join(EXT, 'MediaResources', 'MediaCatalog.json')
     if platform.system() == 'Windows':
         exe_path = os.path.abspath("MemoryPackDeserializer/MemoryPackDeserializer.exe")
@@ -136,7 +144,8 @@ def getAllGameFiles():
         media_url = base_url + '/MediaResources/' + value["Path"]
         data.append((media_url, value["Path"], value.get("Crc", 0)))  
     return data
-# 下載文件
+
+# ファイルのダウンロード
 def downloadFile(url, filename):
     os.makedirs(os.path.dirname(filename), exist_ok=True)
     src = requests.get(url).content
