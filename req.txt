@@ -1,0 +1,5 @@
+UnityPy==1.7.21
+requests
+xxhash
+pycryptodome
+flatbuffers
