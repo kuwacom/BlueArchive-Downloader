@@ -1,3 +1,9 @@
+# What Is This
+このフォークリポジトリは、元のリポジトリりから完全に分離したものです。
+
+フォーク元でバグ修正や更新があった場合は、必要がある場合のみ同じアップデートをします。
+(ただ元のリポジトリはすでに停止しているようです。)
+
 # Blue Archive JP downloader
 # "Blue Archive" is a registered trademark of NAT GAMES Co., Ltd. and Yostar Co., Ltd. This repository is not affiliated with NEXON Korea Corp., NEXON GAMES Co., Ltd., and Yostar Co., Ltd. All game resources are copyrighted to their respective owners.
 A small project that downloads all assets of the Japan-Server version of Blue Archive and extracts them while it's at it.
