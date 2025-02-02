@@ -151,8 +151,8 @@ def getAllGameFiles():
     with open(output_file_path, 'r') as f:
         resM = json.load(f)
     for key, value in resM["Table"].items():
-        media_url = base_url + '/MediaResources/' + value["Path"]
-        data.append((media_url, value["Path"], value.get("Crc", 0)))  
+        media_url = base_url + '/MediaResources/' + value["Path"].replace("\\","/")
+        data.append((media_url, value["Path"], value.get("Crc", 0)))
     return data
 
 # ファイルのダウンロード
