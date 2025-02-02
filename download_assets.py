@@ -17,9 +17,15 @@ ROOT = os.path.dirname(os.path.realpath(__file__))
 RAW = os.path.join(ROOT, "raw")
 EXT = os.path.join(ROOT, "extracted")
 VERSION = os.path.join(ROOT, "version.txt")
-#資源路徑
-resource_path = "https://yostar-serverinfo.bluearchiveyostar.com/r70_47_v8g5eikyrqgs6zuiohj9.json"
-resource_path2 = "https://prod-noticeindex.bluearchiveyostar.com/prod/index.json"
+
+# アプリの内部リソースバージョンID
+# versionId = "r70_47_v8g5eikyrqgs6zuiohj9"
+# versionId = "r75_52_49ajrpwcziy395uuk0jq"
+versionId = "r76_53_aga2h1wd8vmub5kljnqh"
+
+# リソースのMAP URL
+resource_path = f"https://yostar-serverinfo.bluearchiveyostar.com/{versionId}.json"
+# resource_path2 = "https://prod-noticeindex.bluearchiveyostar.com/prod/index.json"
 
 option = {
     "skipExistingDownloadedResource": True,
@@ -42,7 +48,6 @@ def asset_download(file_info):
     if option["skipExistingDownloadedResource"] and os.path.isfile(dest_path):
         print(f"{filename} - Already downloaded. Skipping.")
         return
-    
     while True:
         print("Dwonload to: " + file_url)
         downloadFile(file_url, dest_path)
@@ -119,7 +124,12 @@ def getAllGameFiles():
         data.append((base_url + '/TableBundles/' + asset["Name"], "", asset.get("Crc", 0)))  
 
     # MediaResource
-    MediaResources_url = base_url + '/MediaResources/MediaCatalog.bytes'
+    if (int(versionId[1:3]) < 76): # バージョンでindexのパスが違うようになった
+        # r76_53 以前の MediaCatalog indexのURLパス
+        MediaResources_url = base_url + '/MediaResources/MediaCatalog.bytes'
+    else:
+        # r76_53 以降の MediaCatalog indexのURLパス
+        MediaResources_url = base_url + '/MediaResources/Catalog/MediaCatalog.bytes'
     if not os.path.exists(RAW):
         os.makedirs(RAW)
     input_file_path = os.path.join(RAW, 'MediaCatalog.bytes')
